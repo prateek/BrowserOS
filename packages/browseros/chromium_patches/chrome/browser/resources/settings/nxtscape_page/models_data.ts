@@ -8,6 +8,9 @@ index 0000000000000..36638c1910a09
 +export interface ModelInfo {
 +  model_id: string;
 +  context_length: number;
++  // For GPT-4.1 and GPT-5 family models, OpenAI changed the API parameter
++  // from max_tokens to max_completion_tokens
++  uses_max_completion_tokens?: boolean;
 +}
 +
 +export interface ModelsData {
@@ -24,18 +27,18 @@ index 0000000000000..36638c1910a09
 +// Direct export of models data
 +export const MODELS_DATA: ModelsData = {
 +  openai: [
-+    { model_id: 'gpt-5-nano', context_length: 400000 },
-+    { model_id: 'gpt-5', context_length: 400000 },
-+    { model_id: 'gpt-5-mini', context_length: 400000 },
++    { model_id: 'gpt-5-nano', context_length: 400000, uses_max_completion_tokens: true },
++    { model_id: 'gpt-5', context_length: 400000, uses_max_completion_tokens: true },
++    { model_id: 'gpt-5-mini', context_length: 400000, uses_max_completion_tokens: true },
 +    { model_id: 'o1-mini', context_length: 128000 },
 +    { model_id: 'o1', context_length: 200000 },
 +    { model_id: 'o3-mini', context_length: 200000 },
 +    { model_id: 'o1-pro', context_length: 200000 },
 +    { model_id: 'o3', context_length: 200000 },
 +    { model_id: 'o4-mini', context_length: 200000 },
-+    { model_id: 'gpt-4.1', context_length: 1047576 },
-+    { model_id: 'gpt-4.1-mini', context_length: 1047576 },
-+    { model_id: 'gpt-4.1-nano', context_length: 1047576 },
++    { model_id: 'gpt-4.1', context_length: 1047576, uses_max_completion_tokens: true },
++    { model_id: 'gpt-4.1-mini', context_length: 1047576, uses_max_completion_tokens: true },
++    { model_id: 'gpt-4.1-nano', context_length: 1047576, uses_max_completion_tokens: true },
 +    { model_id: 'o3-pro', context_length: 200000 },
 +  ],
 +  claude: [
@@ -282,4 +285,29 @@ index 0000000000000..36638c1910a09
 +  const models = getModelsForProvider(providerType);
 +  const model = models.find(m => m.model_id === modelId);
 +  return model?.context_length;
++}
++
++// Helper to check if a model uses max_completion_tokens parameter instead of max_tokens
++// GPT-4.1 and GPT-5 family models require the new max_completion_tokens parameter
++export function usesMaxCompletionTokens(providerType: string, modelId: string): boolean {
++  // Only OpenAI and OpenAI-compatible providers may have this requirement
++  if (providerType !== 'openai' && providerType !== 'openai_compatible' && providerType !== 'openrouter') {
++    return false;
++  }
++  
++  const models = getModelsForProvider(providerType);
++  const model = models.find(m => m.model_id === modelId);
++  
++  // Check explicit flag first
++  if (model?.uses_max_completion_tokens !== undefined) {
++    return model.uses_max_completion_tokens;
++  }
++  
++  // Fallback: Check if model ID matches GPT-4.1 or GPT-5 patterns
++  // This handles custom models not in our list
++  const modelIdLower = modelId.toLowerCase();
++  return modelIdLower.includes('gpt-5') || 
++         modelIdLower.includes('gpt-4.1') ||
++         modelIdLower.startsWith('gpt5') ||
++         modelIdLower.startsWith('gpt4.1');
 +}
